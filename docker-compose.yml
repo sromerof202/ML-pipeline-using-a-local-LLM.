@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # 1. Redis (The Queue & DB)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - tinder-net
+
+  # 2. Redis Exporter (For Monitoring Redis)
+  redis-exporter:
+    image: oliver006/redis_exporter
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "9121:9121"
+    networks:
+      - tinder-net
+    depends_on:
+      - redis
+
+
+  # 3. Ollama (The AI Brain)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - tinder-net
+  # ------------------------
+
+  # 4. Ingestor (The "Traffic Generator")
+  ingestor:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY src/tinder_pipeline/ingestor.py .
+    volumes:
+      - ./src/tinder_pipeline/email.csv:/app/email.csv
+    command: python ingestor.py
+    networks:
+      - tinder-net
+    depends_on:
+      - redis
+
+  # 5. Worker (The LLM Engine)
+  worker:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY src/tinder_pipeline/worker.py .
+    environment:
+      - REDIS_HOST=redis
+      # Point to the ollama service name in docker
+      - OLLAMA_ADDR=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:3b
+    ports: [ "8001:8001" ]
+    command: python worker.py
+    networks: [ tinder-net ]
+    restart: always
+    # This line works now because we added the 'ollama' service above
+    depends_on: [ redis, ollama ]
+
+  # 6. API (The Backend)
+  api:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY src/tinder_pipeline/api.py .
+    ports:
+      - "8002:8000"
+    environment:
+      - REDIS_HOST=redis
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
+    networks:
+      - tinder-net
+    depends_on:
+      - redis
+
+  # 7. Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - tinder-net
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - tinder-net
+    depends_on:
+      - prometheus
+
+networks:
+  tinder-net:
+    driver: bridge
+
+volumes:
+  ollama_data:

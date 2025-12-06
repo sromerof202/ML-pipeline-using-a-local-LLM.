@@ -1,67 +1,81 @@
-.. These are examples of badges you might want to add to your README:
-   please update the URLs accordingly
-
-    .. image:: https://api.cirrus-ci.com/github/<USER>/tinder-pipeline.svg?branch=main
-        :alt: Built Status
-        :target: https://cirrus-ci.com/github/<USER>/tinder-pipeline
-    .. image:: https://readthedocs.org/projects/tinder-pipeline/badge/?version=latest
-        :alt: ReadTheDocs
-        :target: https://tinder-pipeline.readthedocs.io/en/stable/
-    .. image:: https://img.shields.io/coveralls/github/<USER>/tinder-pipeline/main.svg
-        :alt: Coveralls
-        :target: https://coveralls.io/r/<USER>/tinder-pipeline
-    .. image:: https://img.shields.io/pypi/v/tinder-pipeline.svg
-        :alt: PyPI-Server
-        :target: https://pypi.org/project/tinder-pipeline/
-    .. image:: https://img.shields.io/conda/vn/conda-forge/tinder-pipeline.svg
-        :alt: Conda-Forge
-        :target: https://anaconda.org/conda-forge/tinder-pipeline
-    .. image:: https://pepy.tech/badge/tinder-pipeline/month
-        :alt: Monthly Downloads
-        :target: https://pepy.tech/project/tinder-pipeline
-    .. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Twitter
-        :alt: Twitter
-        :target: https://twitter.com/tinder-pipeline
-
-.. image:: https://img.shields.io/badge/-PyScaffold-005CA0?logo=pyscaffold
-    :alt: Project generated with PyScaffold
-    :target: https://pyscaffold.org/
-
-|
+.. image:: https://img.shields.io/badge/build-passing-brightgreen
+   :target: https://github.com/your-org/your-repo/actions
+.. image:: https://img.shields.io/badge/license-MIT-blue
+   :target: https://github.com/your-org/your-repo
+.. image:: https://img.shields.io/badge/python-3.11-blue
+   :target: https://www.python.org/
 
 ===============
 tinder-pipeline
 ===============
 
+Lightweight ML pipeline for high-volume threat detection using a local LLM.
+Update the badge URLs above to point to your repository and services.
 
-    Add a short description here!
+Overview
+========
+`tinder-pipeline` is a scalable ML pipeline that automates high-volume threat detection using a Local LLM to ensure user privacy and zero data leakage.
 
+It handles massive data spikes by ingesting logs via Apache Spark and buffering them through a Redis queue, allowing distributed workers to analyze messages for toxicity in parallel.
 
-A longer description of your project goes here...
+Finally, it serves real-time risk scores to the application via a FastAPI endpoint and monitors system health and detected threats using a live Grafana dashboard.
 
+Architecture
+============
+- Ingest logs (CSV / streaming) and push tasks to Redis queue ``ml_task_queue``.
+- Multiple worker processes consume tasks and analyze messages using a local LLM.
+- Workers store per-user risk in Redis; FastAPI exposes risk lookups and Prometheus exports metrics for monitoring.
 
-.. _pyscaffold-notes:
+Getting started
+===============
 
-Making Changes & Contributing
-=============================
+1. Install dependencies and pre-commit hooks:
 
-This project uses `pre-commit`_, please make sure to install it before making any
-changes::
-
+::
+    pip install -r requirements.txt
     pip install pre-commit
     cd tinder-pipeline
     pre-commit install
-
-It is a good idea to update the hooks to the latest version::
-
     pre-commit autoupdate
 
-Don't forget to tell your contributors to also install and use pre-commit.
+2. Start Ollama:
 
-.. _pre-commit: https://pre-commit.com/
+::
+    docker-compose up -d ollama
 
-Note
-====
+3. Pull a model (example):
 
-This project has been set up using PyScaffold 4.6. For details and usage
-information on PyScaffold see https://pyscaffold.org/.
+::
+    docker-compose exec ollama ollama pull qwen2.5:3b
+
+4. Start the pipeline:
+
+::
+    docker-compose up -d --build
+
+Files of interest
+=================
+- ``email.csv`` — input data used by the ingestor.
+- ``src/tinder_pipeline/ingestor.py`` — reads CSV and enqueues tasks to Redis.
+- ``src/tinder_pipeline/worker.py`` — worker that calls local LLM and writes risk results to Redis.
+- ``src/tinder_pipeline/api.py`` — FastAPI service that returns per-user risk.
+- ``prometheus.yml`` — Prometheus scrape configuration.
+
+Prometheus example queries
+==========================
+- rate(emails_processed_total[1m])
+- increase(threats_detected_total[1m])
+
+Dataset reference
+=================
+Insider Threat Test Dataset: https://kilthub.cmu.edu/articles/dataset/Insider_Threat_Test_Dataset/12841247/1?file=24856766
+
+Contributing
+============
+- Follow the pre-commit hooks listed above.
+- Update tests and add unit tests for new features.
+- Keep secrets and sensitive data off of logs — pipeline uses a local LLM to reduce data leakage risk.
+
+Notes
+=====
+This project was scaffolded with PyScaffold 4.6. See https://pyscaffold.org/ for details.
