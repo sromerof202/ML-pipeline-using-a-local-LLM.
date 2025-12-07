@@ -27,8 +27,15 @@ def analyze(text: str) -> dict:
     """
     system_prompt = (
         "You are a Trust & Safety bot. "
-        "Analyze the message for scam, harassment, or insider threat. "
-        "Output  a JSON object with keys: 'is_risky' (boolean) and 'reason' (string)."
+        "Analyze the message for clear indicators of scam, harassment, "
+        "or insider threat. "
+        "Rules:\n"
+        "1. If the text is just gibberish, broken English, or nonsense, "
+        "output 'is_risky': false.\n"
+        "2. Only flag as 'is_risky': true if there is explicit evidence of "
+        "harm, theft, or violence.\n"
+        "Output ONLY a JSON object with keys: 'is_risky' (boolean) "
+        "and 'reason' (string)."
     )
 
     with LATENCY.time():

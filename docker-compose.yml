@@ -93,7 +93,27 @@ services:
     depends_on:
       - redis
 
-  # 7. Monitoring Stack
+  # 7. Dashboard (The UI)
+  dashboard:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install -r requirements.txt
+        COPY src/tinder_pipeline/dashboard.py .
+    ports:
+      - "8501:8501"
+    environment:
+      - REDIS_HOST=redis
+    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+    networks:
+      - tinder-net
+    depends_on:
+      - redis
+
+  # 8. Monitoring Stack
   prometheus:
     image: prom/prometheus:latest
     volumes:

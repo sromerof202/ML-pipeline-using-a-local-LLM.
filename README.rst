@@ -1,16 +1,23 @@
-.. image:: https://img.shields.io/badge/build-passing-brightgreen
-   :target: https://github.com/your-org/your-repo/actions
-.. image:: https://img.shields.io/badge/license-MIT-blue
-   :target: https://github.com/your-org/your-repo
-.. image:: https://img.shields.io/badge/python-3.11-blue
-   :target: https://www.python.org/
-
 ===============
 tinder-pipeline
 ===============
 
-Lightweight ML pipeline for high-volume threat detection using a local LLM.
-Update the badge URLs above to point to your repository and services.
+.. image:: https://img.shields.io/badge/build-passing-brightgreen
+   :target: https://github.com/sromerof202/ML-pipeline-using-a-local-LLM
+.. image:: https://img.shields.io/badge/license-MIT-blue
+   :target: https://github.com/sromerof202/ML-pipeline-using-a-local-LLM
+.. image:: https://img.shields.io/badge/python-3.11-blue
+   :target: https://www.python.org/
+
+**Lightweight ML pipeline for high-volume threat detection using a local LLM.**
+
+.. image:: admin_dashboard.png
+   :alt: The Streamlit UI
+   :align: center
+
+.. image:: rate_limit_grafana.png
+   :alt: Grafana Metrics
+   :align: center
 
 Overview
 ========
@@ -18,40 +25,53 @@ Overview
 
 It handles massive data spikes by ingesting logs via Apache Spark and buffering them through a Redis queue, allowing distributed workers to analyze messages for toxicity in parallel.
 
-Finally, it serves real-time risk scores to the application via a FastAPI endpoint and monitors system health and detected threats using a live Grafana dashboard.
+Finally, it serves real-time risk scores to the application via a FastAPI endpoint and monitors system health and detected threats using a live Grafana + UI dashboard.
 
 Architecture
 ============
-- Ingest logs (CSV / streaming) and push tasks to Redis queue ``ml_task_queue``.
-- Multiple worker processes consume tasks and analyze messages using a local LLM.
-- Workers store per-user risk in Redis; FastAPI exposes risk lookups and Prometheus exports metrics for monitoring.
+The system follows a decoupled Producer-Consumer pattern to handle backpressure during traffic spikes.
+
+**Flow:**
+Ingestion (Spark) -> Redis Queue -> Worker (Python) <-> Ollama (Qwen) -> Redis Feature Store -> FastAPI -> Grafana/UI
+
+Key Features
+~~~~~~~~~~~~
+* **High-Volume Ingestion:** Uses **Apache Spark** logic to batch-process CSV logs into Redis.
+* **Shock Absorber Pattern:** Implements a Redis Queue to buffer traffic.
+* **Privacy-First AI:** Deploys quantized **Qwen 2.5 (3B)** models locally.
+* **Resilience:** Implements "Poison Pill" protection.
+* **Observability:** Full monitoring stack (**Prometheus & Grafana**).
 
 Getting started
 ===============
 
 1. Install dependencies and pre-commit hooks:
 
-::
-    pip install -r requirements.txt
-    pip install pre-commit
-    cd tinder-pipeline
-    pre-commit install
-    pre-commit autoupdate
+   .. code-block:: bash
+
+      pip install -r requirements.txt
+      pip install pre-commit
+      cd tinder-pipeline
+      pre-commit install
+      pre-commit autoupdate
 
 2. Start Ollama:
 
-::
-    docker-compose up -d ollama
+   .. code-block:: bash
+
+      docker-compose up -d ollama
 
 3. Pull a model (example):
 
-::
-    docker-compose exec ollama ollama pull qwen2.5:3b
+   .. code-block:: bash
+
+      docker-compose exec ollama ollama pull qwen2.5:3b
 
 4. Start the pipeline:
 
-::
-    docker-compose up -d --build
+   .. code-block:: bash
+
+      docker-compose up -d --build
 
 Files of interest
 =================
@@ -63,8 +83,8 @@ Files of interest
 
 Prometheus example queries
 ==========================
-- rate(emails_processed_total[1m])
-- increase(threats_detected_total[1m])
+- ``rate(emails_processed_total[1m])``
+- ``increase(threats_detected_total[1m])``
 
 Dataset reference
 =================

@@ -5,6 +5,11 @@ Changelog
 Version 0.1
 ===========
 
-- Feature A added
-- FIX: nasty bug #1729 fixed
+- Main Backend Feature added
+
+Version 0.2
+===========
+
+- frontend initial release
+
 - add your changes here!
