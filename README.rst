@@ -15,7 +15,7 @@ tinder-pipeline
    :alt: The Streamlit UI
    :align: center
 
-.. image:: rate_limit_grafana.png
+.. image:: rate_limit_per-minute.png
    :alt: Grafana Metrics
    :align: center
 
